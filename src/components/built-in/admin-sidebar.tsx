@@ -8,10 +8,10 @@ import Link from "next/link";
 
 const sidebarData = [{
     name: "User Management",
-    path: "/admin/users"
+    path: "/admin/user_management"
 }, {
     name: "Category",
-    path: "/admin/categories"
+    path: "/admin/category_management"
 }, {
     name: "Candidates",
     path: "/admin/candidates"

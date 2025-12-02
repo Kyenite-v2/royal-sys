@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, Menu, Trash } from "lucide-react";
+import { Edit, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type UserProps = {
@@ -23,7 +23,7 @@ type UserProps = {
 
 type UsersProps = UserProps[];
 
-export default function Page(req: Request) {
+export default function Page() {
     const [users, setUsers] = useState<UsersProps>([]);
 
     const [username, setUsername] = useState<string>("");
@@ -43,8 +43,35 @@ export default function Page(req: Request) {
     const [error2, setError2] = useState<string>("");
 
     useEffect(() => {
-        loadUsers()
+        async function fetchUsers() {
+            try {
+                const res = await fetch("/api/server/admin/users");
+                const data = await res.json();
+
+                if (res.status === 200) {
+                    setUsers(data); // Safe: now inside async function
+                } else {
+                    console.error(data.errorText);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        fetchUsers();
     }, [])
+
+    async function loadUsers() {
+        const res = await fetch("/api/server/admin/users");
+
+        const data = await res.json();
+        if (res.status !== 200) {
+            console.log(data.errorText);
+            return
+        }
+
+        setUsers(data);
+    }
 
     const createButton = async () => {
         setError("");
@@ -100,7 +127,7 @@ export default function Page(req: Request) {
         });
 
         const data = await res.json();
-        if(res.status !== 200) {
+        if (res.status !== 200) {
             return setError2(data.errorText);
         }
 
@@ -108,18 +135,6 @@ export default function Page(req: Request) {
         setOpen2(false);
 
         loadUsers();
-    }
-
-    async function loadUsers() {
-        const res = await fetch("/api/server/admin/users");
-
-        const data = await res.json();
-        if (res.status !== 200) {
-            console.log(data.errorText);
-            return
-        }
-
-        setUsers(data);
     }
 
     async function deleteUser(id: string) {
@@ -147,7 +162,7 @@ export default function Page(req: Request) {
         setPassword("")
         setRole("")
         setError("")
-        
+
         setUsername2("")
         setEmail2("")
         setPassword2("")
@@ -159,12 +174,8 @@ export default function Page(req: Request) {
         <AdminSidebarMenu>
             <div>
                 <div className="flex justify-between items-center">
-                    <div className="flex md:hidden items-center justify-center gap-4">
-                        <SidebarTrigger>
-                            <Button variant={"ghost"}>
-                                <Menu size={12} />
-                            </Button>
-                        </SidebarTrigger>
+                    <div className="flex items-center justify-center gap-4">
+                        <SidebarTrigger className="block md:hidden"/>
                         <h1 className="text-2xl font-bold">User Management</h1>
                     </div>
                     <div>
@@ -181,7 +192,7 @@ export default function Page(req: Request) {
                                             Create login credential
                                         </DialogTitle>
                                         <DialogDescription>
-                                            Fill up user's login credentials.
+                                            Fill up user&apos;s login credentials.
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="space-y-4">
@@ -219,7 +230,7 @@ export default function Page(req: Request) {
                                     }
                                     <DialogFooter className="flex items-center justify-end gap-4 mt-4 border-t pt-4">
                                         <DialogClose asChild>
-                                            <Button type="button" variant="outline" className="rounded-xl px-5 hover:bg-accent transition-all" onClick={()=>{clearAll()}}>
+                                            <Button type="button" variant="outline" className="rounded-xl px-5 hover:bg-accent transition-all" onClick={() => { clearAll() }}>
                                                 Close
                                             </Button>
                                         </DialogClose>
@@ -277,7 +288,7 @@ export default function Page(req: Request) {
                                                 <div className="flex justify-center items-center gap-2">
                                                     <Dialog open={open2} onOpenChange={setOpen2}>
                                                         <DialogTrigger asChild>
-                                                            <Button variant={"secondary"} onClick={()=>{retrieveData(item)}}>
+                                                            <Button variant={"secondary"} onClick={() => { retrieveData(item) }}>
                                                                 <Edit size={12} />
                                                             </Button>
                                                         </DialogTrigger>
@@ -287,7 +298,7 @@ export default function Page(req: Request) {
                                                                     Update login credential
                                                                 </DialogTitle>
                                                                 <DialogDescription>
-                                                                    Fill up user's login credentials.
+                                                                    Fill up user&apos;s login credentials.
                                                                 </DialogDescription>
                                                             </DialogHeader>
                                                             <div className="space-y-4">
@@ -329,7 +340,7 @@ export default function Page(req: Request) {
                                                                         Close
                                                                     </Button>
                                                                 </DialogClose>
-                                                                <Button type="submit" onClick={()=>{updateButton(item)}} className="rounded-xl px-6 font-medium shadow-sm hover:shadow-md transition-all">
+                                                                <Button type="submit" onClick={() => { updateButton(item) }} className="rounded-xl px-6 font-medium shadow-sm hover:shadow-md transition-all">
                                                                     Update
                                                                 </Button>
                                                             </DialogFooter>

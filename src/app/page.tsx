@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
@@ -53,7 +54,7 @@ export default function Page() {
         {/* Header / Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center border border-gray-700">
-            <span className="text-gray-400 text-sm">App Logo</span>
+            <Image src={"/mc-logo.png"} alt="Logo" width={200} height={200} />
           </div>
           <h1 className="text-3xl font-semibold mt-4">Royal Selection</h1>
           <p className="text-gray-400 text-sm mt-1">Login to continue — Mr. & Ms. Pageant System</p>
