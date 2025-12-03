@@ -1,19 +1,24 @@
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { toast } from "sonner";
 
 type CriteriaItem = {
     criteria_name: string;
     percentage: number;
-    value: number;
+    score: number;
 };
 
 type CandidateCardProps = {
+    year: string;
+    category_id: string;
+    candidate_id: string;
     index: number;
-    imageUrl: string;
+    image_url: string;
     name: string;
     candidate_no: number;
+    candidate_role: string;
     criteria: CriteriaItem[];
     isEditing: boolean;
     editingIndex: number | null;
@@ -21,10 +26,14 @@ type CandidateCardProps = {
 };
 
 export default function CandidateCard({
+    year,
+    category_id,
+    candidate_id,
     index,
-    imageUrl,
+    image_url,
     name,
     candidate_no,
+    candidate_role,
     criteria,
     isEditing,
     editingIndex,
@@ -32,7 +41,7 @@ export default function CandidateCard({
 }: CandidateCardProps) {
 
     const [values, setValues] = useState<string[]>(
-        criteria.map(c => c.value.toString())
+        criteria.map(c => c.score.toString())
     );
 
     const updateValue = (index: number, newVal: string) => {
@@ -58,18 +67,46 @@ export default function CandidateCard({
         });
     };
 
+    const saveScores = async () => {
+        const payload = {
+            candidate_id,
+            category_id,
+            year,
+            criteria: values.map((score, i) => ({
+                criteria_name: criteria[i].criteria_name,
+                score: parseInt(score) || 0,
+            })),
+        };
+
+        const res = await fetch("/api/server/index/candidates", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            console.error(data);
+            toast.error("Failed to save scores");
+            return;
+        }
+
+        toast.success("Scores updated!");
+    };
+
     return (
         <Card className="bg-[#120D1E] border border-[#2A213A] shadow-lg rounded-2xl text-gray-200">
             <CardHeader className="space-y-3">
 
                 {/* IMAGE */}
                 <div className="h-58 rounded-xl overflow-hidden border border-[#302542] bg-[#1E152E]">
-                    <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+                    <img src={image_url} alt={name} className="w-full h-full object-cover" />
                 </div>
 
                 {/* NAME & NUMBER */}
                 <div className="w-full flex items-center justify-between text-[#C9A86A] font-semibold">
-                    <h1>{name}</h1>
+                    <h1>{candidate_role}. {name}</h1>
                     <p className="text-sm bg-[#1F162E] py-1 px-3 rounded-lg border border-[#3A2E52]">
                         No. {candidate_no}
                     </p>
@@ -96,6 +133,7 @@ export default function CandidateCard({
                                 value={values[i]}
                                 onChange={(e) => updateValue(i, e.target.value)}
                                 className="bg-[#1A1228] border-[#3A2E52] text-gray-100 focus-visible:ring-[#C9A86A]"
+                                disabled={!isEditing && editingIndex !== index}
                             />
                         </div>
                     </div>
@@ -110,8 +148,8 @@ export default function CandidateCard({
                     onClick={() => {
                         if (isEditing) {
                             // Save clicked
-                            console.log("Save clicked", values);
                             setEditingIndex(null);
+                            saveScores();
                         } else {
                             // Edit clicked
                             setEditingIndex(index);

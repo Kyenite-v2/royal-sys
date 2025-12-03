@@ -147,7 +147,10 @@ export default function Page() {
         const data = await res.json();
         if (res.status !== 200) {
             console.error("Error: ", data.errorText);
+            return;
         }
+
+        loadUsers();
     }
 
     function retrieveData(user: UserProps) {

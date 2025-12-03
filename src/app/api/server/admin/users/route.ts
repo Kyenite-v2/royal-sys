@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
         const supabaseAuth = createClient(supabaseUrl, supabasePrivateKey);
 
-        const { data: createData, error: createError } = await supabaseAuth.auth.admin.createUser({ email, password });
+        const { data: createData, error: createError } = await supabaseAuth.auth.admin.createUser({ email, password, email_confirm: true });
         if(createError) {
             return NextResponse.json({ errorText: createError.message }, { status: 400 })
         }

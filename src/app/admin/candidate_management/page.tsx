@@ -11,13 +11,16 @@ import { Edit, Plus, Trash, TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { AvatarFallback } from "@radix-ui/react-avatar";
 
-type CategoryProps = {
+type CandidatesProps = {
     id: string;
-    name: string;
     year: string;
-    percentage: number;
-    criteria: { criteria_name: string; percentage: number }[];
+    role: string;
+    candidate_no: number;
+    candidate_name: string;
+    image_url: string;
 }
 
 type YearProps = {
@@ -27,12 +30,13 @@ type YearProps = {
 
 export default function CategoryManagementUI() {
     const [years, setYears] = useState<YearProps[]>([]);
-    const [categories, setCategories] = useState<CategoryProps[]>([]);
+    const [candidates, setCandidates] = useState<CandidatesProps[]>([]);
 
     const [year, setYear] = useState<string>("");
+    const [candidateRole, setCandidateRole] = useState<string>("");
     const [candidateNo, setCandidateNo] = useState<string>("");
-    const [candidateName, setCandidateName] = useState<number | null>(null);
-    const [candidateImage, setCandidateImage] = useState<{ criteria_name: string, percentage: number | null }[]>([]);
+    const [candidateName, setCandidateName] = useState<string>("");
+    const [candidateImage, setCandidateImage] = useState<File | null>(null);
 
     const [open, setOpen] = useState<boolean>(false);
     const [onUpdate, setOnUpdate] = useState<boolean>(false);
@@ -60,29 +64,29 @@ export default function CategoryManagementUI() {
     }, [])
 
     useEffect(() => {
-        async function fetchCategories() {
-            const res = await fetch(`/api/server/admin/categories?year=${year}`);
+        async function fetchCandidates() {
+            const res = await fetch(`/api/server/admin/candidates?year=${year}`);
 
             const categories = await res.json();
             if (res.status !== 200) {
                 return
             }
 
-            setCategories(categories);
+            setCandidates(categories);
         }
 
-        fetchCategories();
+        fetchCandidates();
     }, [year])
 
     async function fetchCandidates() {
-        const res = await fetch(`/api/server/admin/categories?year=${year}`);
+        const res = await fetch(`/api/server/admin/candidates?year=${year}`);
 
         const categories = await res.json();
         if (res.status !== 200) {
             return
         }
 
-        setCategories(categories);
+        setCandidates(categories);
     }
 
     const handleCreateCategory = async () => {
@@ -91,38 +95,121 @@ export default function CategoryManagementUI() {
             return
         }
 
-        if (!candidateNo || !candidateName || !candidateImage) {
+        if (!candidateNo || !candidateRole || !candidateName || !candidateImage) {
             toast.error("Please fill in all required fields.", { position: "top-right" });
             return
         }
 
-        
+        const formData = new FormData();
+        formData.append("year", year);
+        formData.append("role", candidateRole);
+        formData.append("candidate_no", candidateNo);
+        formData.append("candidate_name", candidateName);
+        formData.append("candidate_image", candidateImage);
+
+        const res = await fetch("/api/server/admin/candidates", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+        if (res.status !== 200) {
+            toast.error(data.errorText, { position: "top-right" });
+            return
+        }
+
+        toast.success("Candidate created successfully.", { position: "top-right" });
+        setOpen(false);
+        fetchCandidates();
+        clearForm();
     }
 
-    const handleUpdateCategory = async () => {
+    const handleUpdateCandidate= async () => {
         if (!year) {
             toast.error("Please select a year.", { position: "top-right" });
             return
         }
 
-        if (!candidateNo || !candidateName || !candidateImage) {
+        if (!updateId || !candidateRole || !candidateNo || !candidateName || !candidateImage) {
             toast.error("Please fill in all required fields.", { position: "top-right" });
             return
         }
 
-        
+        const formData = new FormData();
+        formData.append("id", updateId);
+        formData.append("year", year);
+        formData.append("role", candidateRole);
+        formData.append("candidate_no", candidateNo);
+        formData.append("candidate_name", candidateName);
+        formData.append("candidate_image", candidateImage);
+
+        const res = await fetch("/api/server/admin/candidates", {
+            method: "PUT",
+            body: formData
+        });
+
+        const data = await res.json();
+        if (res.status !== 200) {
+            toast.error(data.errorText, { position: "top-right" });
+            return
+        }
+
+        toast.success("Candidate updated successfully.", { position: "top-right" });
+        setOpen(false);
+        fetchCandidates();
+        clearForm();
     }
 
-    const isOnUpdate = (value: boolean, data: { id: string, name: string, percentage: number, criteria: { criteria_name: string; percentage: number }[] } | null) => {
-        
+    const isOnUpdate = (value: boolean, candidate: CandidatesProps | null) => {
+        if (!value || !candidate) {
+            setOnUpdate(false);
+            setUpdateId("");
+            return;
+        }
+
+        clearForm();
+
+        setOnUpdate(true);
+        if (value) {
+            setUpdateId(candidate.id);
+            setCandidateRole(candidate.role);
+            setCandidateNo(candidate.candidate_no.toString());
+            setCandidateName(candidate.candidate_name);
+            setCandidateImage(null);
+            setOpen(true);
+        } else {
+            setUpdateId("");
+            setOpen(false);
+        }
     }
 
     const handleDelete = async (id: string) => {
-        
+        if (!confirm("Are you sure you want to delete this candidate? This action cannot be undone.")) {
+            return;
+        }
+
+        const res = await fetch(`/api/server/admin/candidates`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ id })
+        });
+
+        if (res.status !== 200) {
+            toast.error("Failed to delete candidate.", { position: "top-right" });
+            return
+        }
+
+        toast.success("Candidate deleted successfully.", { position: "top-right" });
+        fetchCandidates();
     }
 
     function clearForm() {
-        
+        setCandidateNo("");
+        setCandidateRole("");
+        setCandidateName("");
+        setCandidateImage(null);
     }
 
     return (
@@ -131,7 +218,7 @@ export default function CategoryManagementUI() {
                 <div className="flex justify-between items-center">
                     <div className="flex items-center justify-center gap-4">
                         <SidebarTrigger className="block md:hidden" />
-                        <h1 className="text-2xl font-bold">Category Management</h1>
+                        <h1 className="text-2xl font-bold">Candidate Management</h1>
                     </div>
                     <div className="flex items-center gap-4">
                         <Select value={year} onValueChange={(e) => { setYear(e) }}>
@@ -154,14 +241,14 @@ export default function CategoryManagementUI() {
                                     clearForm();
                                     isOnUpdate(false, null);
                                 }}>
-                                    Create Category
+                                    Add Candidate
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>{onUpdate ? "Create" : "Update"} Category</DialogTitle>
                                     <DialogDescription>
-                                        Fill in the category details for the pageant.
+                                        Fill in the candidate details for the pageant.
                                     </DialogDescription>
                                 </DialogHeader>
 
@@ -172,11 +259,25 @@ export default function CategoryManagementUI() {
                                         <Input
                                             id="candidateNo"
                                             type="number"
-                                            placeholder="1"
+                                            placeholder=""
                                             value={candidateNo || ''}
-                                            onChange={(e) => setCandidateNo(e.target.valueAsNumber)}
+                                            onChange={(e) => setCandidateNo(e.target.value)}
                                             min={1}
                                         />
+                                    </div>
+
+                                    {/* Candidate Role */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="candidateRole">Candidate Role <span className="text-red-600">*</span></Label>
+                                        <Select value={candidateRole} onValueChange={(e) => { setCandidateRole(e) }}>
+                                            <SelectTrigger className="bg-white text-black w-full">
+                                                <SelectValue placeholder="Select Gender" />
+                                            </SelectTrigger>
+                                            <SelectContent align="center" className="text-center">
+                                                <SelectItem value="Mr">Mr.</SelectItem>
+                                                <SelectItem value="Ms">Ms.</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     {/* Candidate Name */}
@@ -185,7 +286,7 @@ export default function CategoryManagementUI() {
                                         <Input
                                             id="candidateName"
                                             type="text"
-                                            placeholder="John Doe"
+                                            placeholder="Juan Dela Cruz"
                                             value={candidateName}
                                             onChange={(e) => setCandidateName(e.target.value)}
                                             autoComplete="off"
@@ -194,11 +295,12 @@ export default function CategoryManagementUI() {
 
                                     {/* Image Upload */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="candidateImage">Candidate Image <span className="text-red-600">*</span></Label>
+                                        <Label htmlFor="candidateImage">Candidate Image <span className="text-zinc-500 font-light">(1000wx750h JPEG)</span> <span className="text-red-600">*</span></Label>
                                         <Input
                                             id="candidateImage"
+                                            name={candidateName}
                                             type="file"
-                                            accept="image/*"
+                                            accept="image/jpeg"
                                             onChange={(e) => setCandidateImage(e.target.files?.[0] || null)}
                                         />
                                     </div>
@@ -210,7 +312,7 @@ export default function CategoryManagementUI() {
                                             Close
                                         </Button>
                                     </DialogClose>
-                                    <Button type="submit" className="rounded-xl px-6 font-medium shadow-sm hover:shadow-md transition-all" onClick={onUpdate ? handleUpdateCategory : handleCreateCategory}>
+                                    <Button type="submit" className="rounded-xl px-6 font-medium shadow-sm hover:shadow-md transition-all" onClick={onUpdate ? handleUpdateCandidate : handleCreateCategory}>
                                         {onUpdate ? "Update" : "Create"}
                                     </Button>
                                 </DialogFooter>
@@ -222,42 +324,39 @@ export default function CategoryManagementUI() {
                 <Separator className="px-4 my-4" />
 
                 {/* Table */}
-                <div>
+                <div className="overflow-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="text-gray-50">Category Name</TableHead>
-                                <TableHead className="text-gray-50">Year</TableHead>
-                                <TableHead className="text-gray-50">Overall Percentage</TableHead>
-                                <TableHead className="text-gray-50">Criteria</TableHead>
-                                <TableHead className="text-gray-50">Actions</TableHead>
+                                <TableHead className="text-gray-50 w-10">Candidate No.</TableHead>
+                                <TableHead className="text-gray-50 w-5">Image</TableHead>
+                                <TableHead className="text-gray-50 w-10">Candidate Role</TableHead>
+                                <TableHead className="text-gray-50">Candidate Name</TableHead>
+                                <TableHead className="text-gray-50 w-10 text-center">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {/* Example row structure */}
                             {
-                                categories && categories.map((category, i) => {
+                                candidates && candidates.map((candidate, i) => {
                                     return (
                                         <TableRow key={i}>
-                                            <TableCell>{category.name}</TableCell>
-                                            <TableCell>{category.year}</TableCell>
-                                            <TableCell>{category.percentage}%</TableCell>
+                                            <TableCell className="font-bold text-center">{candidate.candidate_no}</TableCell>
                                             <TableCell>
-                                                <div>
-                                                    {category.criteria.map((criteria, idx) => (
-                                                        <p key={idx} className="text-sm">
-                                                            {criteria.criteria_name} - {criteria.percentage}%
-                                                        </p>
-                                                    ))}
-                                                </div>
+                                                <Avatar className="mx-auto border border-gray-300">
+                                                    <AvatarFallback>{candidate.candidate_no}</AvatarFallback>
+                                                    <AvatarImage src={candidate.image_url} alt={candidate.candidate_name} />
+                                                </Avatar>
                                             </TableCell>
+                                            <TableCell>{candidate.role}.</TableCell>
+                                            <TableCell>{candidate.candidate_name}</TableCell>
                                             <TableCell>
                                                 <div className="flex justify-center items-center gap-2">
-                                                    <Button variant="secondary" onClick={() => { isOnUpdate(true, { id: category.id, name: category.name, percentage: category.percentage, criteria: category.criteria }) }}>
+                                                    <Button variant="secondary" onClick={() => { isOnUpdate(true, candidate) }}>
                                                         <Edit size={12} />
                                                     </Button>
 
-                                                    <Button variant="destructive" onClick={() => { handleDelete(category.id) }}>
+                                                    <Button variant="destructive" onClick={() => { handleDelete(candidate.id) }}>
                                                         <Trash size={12} />
                                                     </Button>
                                                 </div>
@@ -267,10 +366,10 @@ export default function CategoryManagementUI() {
                                 })
                             }
                             {
-                                categories.length === 0 && (
+                                candidates.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={5} className="text-center text-gray-500 py-4">
-                                            No categories found.
+                                            No candidates found.
                                         </TableCell>
                                     </TableRow>
                                 )
