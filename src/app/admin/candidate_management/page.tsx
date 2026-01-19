@@ -345,7 +345,7 @@ export default function CategoryManagementUI() {
                                             <TableCell>
                                                 <Avatar className="mx-auto border border-gray-300">
                                                     <AvatarFallback>{candidate.candidate_no}</AvatarFallback>
-                                                    <AvatarImage src={candidate.image_url} alt={candidate.candidate_name} />
+                                                    <AvatarImage src={candidate.image_url.replace(/^http:\/\/127\.0\.0\.1/, `http://${window.location.hostname}`)} alt={candidate.candidate_name} />
                                                 </Avatar>
                                             </TableCell>
                                             <TableCell>{candidate.role}.</TableCell>

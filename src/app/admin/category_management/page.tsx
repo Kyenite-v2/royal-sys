@@ -11,6 +11,7 @@ import { Edit, Plus, Trash, TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import Loading from "@/app/loading";
 
 type CategoryProps = {
     id: string;
@@ -38,41 +39,40 @@ export default function CategoryManagementUI() {
     const [onUpdate, setOnUpdate] = useState<boolean>(false);
     const [updateId, setUpdateId] = useState<string>("");
 
+    const [onLoading, setOnLoading] = useState<boolean>(true);
+
     useEffect(() => {
         async function loadYears() {
             const res = await fetch("/api/server/admin/year");
             const data = await res.json();
-            if (res.status !== 200) {
-                return
-            }
+            if (res.status !== 200) return;
 
             const yearsData: YearProps[] = data;
-            setYears(data);
+            setYears(yearsData);
 
-            const defaultYear = yearsData.filter(item => item.priority === true);
-
-            if (defaultYear.length > 0) {
-                setYear(defaultYear[0].year);
+            const defaultYear = yearsData.find(item => item.priority === true);
+            if (defaultYear) {
+                setYear(defaultYear.year); // set the default year AFTER years are loaded
             }
         }
 
         loadYears();
-    }, [])
+    }, []);
 
     useEffect(() => {
+        if (!year) return; // do not fetch if year is not selected yet
+
         async function fetchCategories() {
             const res = await fetch(`/api/server/admin/categories?year=${year}`);
+            if (!res.ok) return;
 
-            const categories = await res.json();
-            if (res.status !== 200) {
-                return
-            }
-
-            setCategories(categories);
+            const data = await res.json();
+            setCategories(data);
+            setOnLoading(false);
         }
 
         fetchCategories();
-    }, [year])
+    }, [year]);
 
     async function fetchCategories() {
         const res = await fetch(`/api/server/admin/categories?year=${year}`);
@@ -111,6 +111,7 @@ export default function CategoryManagementUI() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 id: updateId,
+                year: year,
                 category_name: categoryName,
                 percentage: overallPercentage,
                 criteria: criteriaCount
@@ -216,6 +217,7 @@ export default function CategoryManagementUI() {
         setCriteriaCount([]);
     }
 
+    if (onLoading) return <Loading />
     return (
         <AdminSidebarMenu>
             <div>

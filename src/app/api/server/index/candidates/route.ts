@@ -60,7 +60,9 @@ export async function GET(req: NextRequest) {
         const { data: candidatesData, error: candidatesError } = await supabase
             .from("candidates")
             .select("*")
-            .eq("year", priorityYear);
+            .eq("year", priorityYear)
+            .order("candidate_no", { ascending: true })
+            .order("role", { ascending: false });
         if (candidatesError) return NextResponse.json({ errorText: "Cannot find candidates." }, { status: 404 });
 
         // Get scores for this judge and category

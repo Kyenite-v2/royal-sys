@@ -18,8 +18,11 @@ const sidebarData = [{
     name: "Candidates",
     path: "/admin/candidate_management"
 }, {
+    name: "Year Management",
+    path: "/admin/year_management"
+}, {
     name: "Show Results",
-    path: "/admin/results"
+    path: "/admin/show_results"
 }]
 
 export default function AdminSidebarMenu({ children }: { children: ReactNode }) {

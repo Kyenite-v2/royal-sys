@@ -1,4 +1,6 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -23,6 +25,7 @@ type CandidateCardProps = {
     isEditing: boolean;
     editingIndex: number | null;
     setEditingIndex: (val: number | null) => void;
+    totalPercentage: number;
 };
 
 export default function CandidateCard({
@@ -37,33 +40,50 @@ export default function CandidateCard({
     criteria,
     isEditing,
     editingIndex,
-    setEditingIndex
+    setEditingIndex,
+    totalPercentage
 }: CandidateCardProps) {
 
-    const [values, setValues] = useState<string[]>(
-        criteria.map(c => c.score.toString())
-    );
+    const [overallPercentage, setOverallPercentage] = useState<number>();
+    const [values, setValues] = useState<string[]>([]);
 
-    const updateValue = (index: number, newVal: string) => {
-        let val = parseInt(newVal);
+    useEffect(() => {
+        setValues(criteria.map(c => c.score.toString()));
+        setEditingIndex(null);
+    }, [criteria, candidate_id, category_id, setEditingIndex]);
 
+    useEffect(()=>{
+        calculateOverall()
+    }, [])
+
+    function calculateOverall() {
+        let overall = 0;
+        criteria.map((item)=>{
+            overall = overall + item.score;
+        })
+
+        setOverallPercentage((totalPercentage / 100) * overall)
+    }
+
+    const updateValue = (i: number, newVal: string) => {
         if (newVal === "") {
             setValues(prev => {
-                const copy = [...prev];
-                copy[index] = "";
-                return copy;
+                const next = [...prev];
+                next[i] = "";
+                return next;
             });
             return;
         }
 
+        let val = parseInt(newVal);
         if (isNaN(val)) return;
         if (val < 0) val = 0;
-        if (val > criteria[index].percentage) val = criteria[index].percentage;
+        if (val > criteria[i].percentage) val = criteria[i].percentage;
 
         setValues(prev => {
-            const copy = [...prev];
-            copy[index] = val.toString();
-            return copy;
+            const next = [...prev];
+            next[i] = val.toString();
+            return next;
         });
     };
 
@@ -74,84 +94,91 @@ export default function CandidateCard({
             year,
             criteria: values.map((score, i) => ({
                 criteria_name: criteria[i].criteria_name,
+                percentage: criteria[i].percentage,
                 score: parseInt(score) || 0,
             })),
         };
 
-        const res = await fetch("/api/server/index/candidates", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
+        try {
+            const res = await fetch("/api/server/index/candidates", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
 
-        const data = await res.json();
+            if (!res.ok) throw new Error("Save failed");
 
-        if (!res.ok) {
-            console.error(data);
+            toast.success("Scores updated!");
+        } catch (err) {
+            console.error(err);
             toast.error("Failed to save scores");
-            return;
         }
 
-        toast.success("Scores updated!");
+        calculateOverall()
     };
 
     return (
         <Card className="bg-[#120D1E] border border-[#2A213A] shadow-lg rounded-2xl text-gray-200">
-            <CardHeader className="space-y-3">
 
-                {/* IMAGE */}
+            <CardHeader className="space-y-3">
                 <div className="h-58 rounded-xl overflow-hidden border border-[#302542] bg-[#1E152E]">
-                    <img src={image_url} alt={name} className="w-full h-full object-cover" />
+                    <img
+                        src={image_url.replace(
+                            /^http:\/\/127\.0\.0\.1/,
+                            `http://${window.location.hostname}`
+                        )}
+                        alt={name}
+                        className="w-full h-full object-cover"
+                    />
                 </div>
 
-                {/* NAME & NUMBER */}
-                <div className="w-full flex items-center justify-between text-[#C9A86A] font-semibold">
+                <div className="flex justify-between text-[#C9A86A] font-semibold">
                     <h1>{candidate_role}. {name}</h1>
-                    <p className="text-sm bg-[#1F162E] py-1 px-3 rounded-lg border border-[#3A2E52]">
+                    <p className="text-sm bg-[#1F162E] px-3 py-1 rounded-lg border border-[#3A2E52]">
                         No. {candidate_no}
                     </p>
                 </div>
-
             </CardHeader>
 
             <CardContent className="space-y-4">
                 {criteria.map((item, i) => (
                     <div key={i} className="grid grid-cols-5 items-center text-sm">
-                        <div className="col-span-3">
-                            <p>{item.criteria_name}</p>
-                        </div>
 
-                        <div className="col-span-1 text-[#C9A86A] font-medium">
-                            <p>{item.percentage}%</p>
-                        </div>
+                        <div className="col-span-3">{item.criteria_name}</div>
 
-                        <div className="col-span-1">
-                            <Input
-                                type="number"
-                                min={0}
-                                max={item.percentage}
-                                value={values[i]}
-                                onChange={(e) => updateValue(i, e.target.value)}
-                                className="bg-[#1A1228] border-[#3A2E52] text-gray-100 focus-visible:ring-[#C9A86A]"
-                                disabled={!isEditing && editingIndex !== index}
-                            />
-                        </div>
+                        <div className="text-[#C9A86A]">{item.percentage}%</div>
+
+                        <Input
+                            type="number"
+                            value={values[i] ?? ""}
+                            min={0}
+                            max={item.percentage}
+                            disabled={!isEditing || editingIndex !== index}
+                            onChange={e => updateValue(i, e.target.value)}
+                            className="bg-[#1A1228] border-[#3A2E52] text-gray-100 focus-visible:ring-[#C9A86A]"
+                        />
                     </div>
                 ))}
+
+                <div className="text-center space-x-2">
+                    <span className="font-bold">
+                        Total Score:
+                    </span>
+                    <span>
+                        {overallPercentage}%
+                    </span>
+                </div>
             </CardContent>
 
             <CardFooter>
                 <Button
-                    className={`mx-auto py-4 px-12 ${isEditing ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
+                    className={`mx-auto px-12 py-4 ${isEditing ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
                         }`}
-                    type={isEditing ? "submit" : "button"}
                     onClick={() => {
                         if (isEditing) {
-                            // Save clicked
-                            setEditingIndex(null);
                             saveScores();
+                            setEditingIndex(null);
                         } else {
-                            // Edit clicked
                             setEditingIndex(index);
                         }
                     }}
@@ -160,6 +187,7 @@ export default function CandidateCard({
                     {isEditing ? "Save" : "Edit"}
                 </Button>
             </CardFooter>
+
         </Card>
     );
 }
