@@ -44,27 +44,38 @@ export default function CandidateCard({
     totalPercentage
 }: CandidateCardProps) {
 
-    const [overallPercentage, setOverallPercentage] = useState<number>();
+    const [overallPercentage, setOverallPercentage] = useState<number>(0);
     const [values, setValues] = useState<string[]>([]);
 
+    /**
+     * Initialize input values when data changes
+     */
     useEffect(() => {
         setValues(criteria.map(c => c.score.toString()));
         setEditingIndex(null);
     }, [criteria, candidate_id, category_id, setEditingIndex]);
 
-    useEffect(()=>{
-        calculateOverall()
-    }, [])
+    /**
+     * Recalculate total score whenever inputs change
+     */
+    useEffect(() => {
+        if (values.length !== criteria.length) return;
 
-    function calculateOverall() {
-        let overall = 0;
-        criteria.map((item)=>{
-            overall = overall + item.score;
-        })
+        let total = 0;
 
-        setOverallPercentage((totalPercentage / 100) * overall)
-    }
+        values.forEach((val) => {
+            const score = parseInt(val) || 0;
+            total += score;
+        });
 
+        const weighted = (totalPercentage / 100) * total;
+        setOverallPercentage(Number(weighted.toFixed(2)));
+
+    }, [values, criteria, totalPercentage]);
+
+    /**
+     * Clamp and update input values
+     */
     const updateValue = (i: number, newVal: string) => {
         if (newVal === "") {
             setValues(prev => {
@@ -87,6 +98,9 @@ export default function CandidateCard({
         });
     };
 
+    /**
+     * Save scores to API
+     */
     const saveScores = async () => {
         const payload = {
             candidate_id,
@@ -109,12 +123,11 @@ export default function CandidateCard({
             if (!res.ok) throw new Error("Save failed");
 
             toast.success("Scores updated!");
+            setEditingIndex(null);
         } catch (err) {
             console.error(err);
             toast.error("Failed to save scores");
         }
-
-        calculateOverall()
     };
 
     return (
@@ -161,23 +174,21 @@ export default function CandidateCard({
                 ))}
 
                 <div className="text-center space-x-2">
-                    <span className="font-bold">
-                        Total Score:
-                    </span>
-                    <span>
-                        {overallPercentage}%
-                    </span>
+                    <span className="font-bold">Total Score:</span>
+                    <span>{overallPercentage}%</span>
                 </div>
             </CardContent>
 
             <CardFooter>
                 <Button
-                    className={`mx-auto px-12 py-4 ${isEditing ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
-                        }`}
+                    className={`mx-auto px-12 py-4 ${
+                        isEditing
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "bg-blue-600 hover:bg-blue-700"
+                    }`}
                     onClick={() => {
                         if (isEditing) {
                             saveScores();
-                            setEditingIndex(null);
                         } else {
                             setEditingIndex(index);
                         }
